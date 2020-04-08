@@ -51,10 +51,7 @@ delta.w2n <- function(m, tdelta){
 }
 
 
-
-
-
-##Formulas for the global coefficients
+##Formulas for the global coefficients  rhoMZ, rhoDZ, a^2, d^2, and e^2
 ade_global<-function(y.mz, y.dz){
   r.mz <-cor(y.mz)[1,2]  
   r.dz <- cor(y.dz)[1,2]
@@ -67,8 +64,8 @@ ade_global<-function(y.mz, y.dz){
   Q <- rbind(c(1, 1, 0), c(.5, 0.25, 0), c(1, 1, 1))
   abc <- solve(Q, W)
   a2 <- abc[1] # heratibility
-  d2 <- abc[2] # dominance
-  e2 <- abc[3] # residual environmental
+  d2 <- abc[2] # dominant component
+  e2 <- abc[3] # non-shared environment
   
   # variance of a2 by delta-method
   sd.r.mz <- sqrt((1 - r.mz^2)/length(y.mz))
@@ -79,34 +76,7 @@ ade_global<-function(y.mz, y.dz){
 }
 
 
-
-# function for plotting heritability, dominant component and environment curves
-ggplot.curves <- function(MakeADFun.obj, adreport.obj, global.value, member,  alpha = 0.95, x.lab = "response"){
-  
-  par <- adreport.obj[rownames(adreport.obj) == member, ]
-  curve<- par[,1]
-  lower <- curve - qnorm(alpha)*par[,2]
-  upper <- curve + qnorm(alpha)*par[,2]
-  y <- MakeADFun.obj$env$data$y_points
-  dat <- c(MakeADFun.obj$env$data$y_mz, MakeADFun.obj$env$data$y_dz) 
-  
-  # Create df for ggplot
-  df <- data.frame(y = y, curve=curve, lower = lower, upper = upper)
-  
-  # Construct plot
-  p <- ggplot(data = df, aes(x = y, y = curve)) +
-    geom_line() +
-    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3) +
-    geom_hline(aes(yintercept = global.value), linetype = 2, col = "red") +
-    geom_vline(xintercept = quantile(dat, probs = c(0.05, 0.95), na.rm =T), col=3) +
-    xlab(x.lab)
-  p <- p +  theme_Publication()
-  p
-}
-
-
-
-###function to plot MZ and DZ correlation curves
+###function to plot MZ and DZ correlation curves together
 
 ggplot.corMZDZ <- function(MakeADFun.obj, adreport.obj, rDZ, rMZ, alpha = 0.95, x.lab = "response"){
   
@@ -119,49 +89,14 @@ ggplot.corMZDZ <- function(MakeADFun.obj, adreport.obj, rDZ, rMZ, alpha = 0.95, 
   lowerDZ <- correlationDZ - qnorm(alpha)*parDZ[,2]
   upperDZ <- correlationDZ + qnorm(alpha)*parDZ[,2]
   y <- MakeADFun.obj$env$data$y_points
-  
+  dat <- c(MakeADFun.obj$env$data$y_mz, MakeADFun.obj$env$data$y_dz)
   # Create df for ggplot
-  dfMZ <- data.frame(y = y, correlation = correlationMZ, lower = lowerMZ, upper = upperMZ,
-                     zygosity = factor(rep("MZ", length(y))))
-  dfDZ <- data.frame(y = y, correlation = correlationDZ, lower = lowerDZ, upper = upperDZ,
-                     zygosity = factor(rep("DZ", length(y))))
-  df <- rbind(dfMZ, dfDZ)
-  # Construct plot
-  p <- ggplot(data = df, aes(x = y, y = correlation)) +
-    geom_line(aes(color = zygosity)) +
-    geom_ribbon(aes(ymin = lower, ymax = upper, group = zygosity), alpha = 0.3) +
-    geom_hline(aes(yintercept = rDZ), linetype = 2, color = "red") +
-    geom_hline(aes(yintercept = rMZ), linetype = 2, color = "red") +
-    xlab(x.lab) +
-    scale_color_manual(values=c("green", "blue")) +
-    theme_Publication()
-  p
-}
+  df <- data.frame(y = c(y, y), correlation = c(correlationMZ, correlationDZ),
+                   lower = c(lowerMZ, lowerDZ), upper = c(upperMZ, upperDZ), 
+                   relationship = factor(rep(c("MZ", "DZ"), each = length(y))))
   
-
-ggplot.cor.mc.fc <- function(MakeADFun.obj, adreport.obj, cor.global.mc, cor.global.fc,  alpha = 0.95, x.lab = "response"){
+  df2 <- data.frame(global = c(rMZ, rDZ), relationship = factor(c("MZ", "DZ")))
   
-  par.mc <- adreport.obj[rownames(adreport.obj) == "cor_curve_MC", ]
-  par.fc <- adreport.obj[rownames(adreport.obj) == "cor_curve_FC", ]
-  correlation.mc <- par.mc[,1]
-  correlation.fc <- par.fc[,1]
-  lower.mc <- correlation.mc - qnorm(alpha)*par.mc[,2]
-  upper.mc <- correlation.mc + qnorm(alpha)*par.mc[,2]
-  lower.fc <- correlation.fc - qnorm(alpha)*par.fc[,2]
-  upper.fc <- correlation.fc + qnorm(alpha)*par.fc[,2]
-  
-  y <- MakeADFun.obj$env$data$y_points
-  dat <- c(MakeADFun.obj$env$data$y[,1], MakeADFun.obj$env$data$y[,2])
-  
-  
-  # Create df for ggplot
-  df <- data.frame(y = c(y, y), correlation = c(correlation.mc, correlation.fc),
-                   lower = c(lower.mc, lower.fc), upper = c(upper.mc, upper.fc), 
-                   relationship = factor(rep(c("MC", "FC"), each = length(y))))
-  
-  df2 <- data.frame(global = c(cor.global.mc, cor.global.fc), relationship = factor(c("MC", "FC")))
-  
-  # Construct plot
   p <- ggplot(data = df, aes(x = y, y = correlation)) +
     geom_line(aes(color = relationship)) +
     geom_ribbon(aes(ymin = lower, ymax = upper, group=relationship), alpha = 0.3) +
@@ -171,4 +106,42 @@ ggplot.cor.mc.fc <- function(MakeADFun.obj, adreport.obj, cor.global.mc, cor.glo
   p <- p +  theme_Publication()
   p
 }
-
+  
+###function to plot heritability, dominant component, and non-shared environment together
+ggplot.3curves<-function(MakeADFun.obj, adreport.obj, g.1, g.2, g.3, member1, member2, member3, type1, type2, type3, alpha = 0.95, x.lab = "response"){
+  y_points <- MakeADFun.obj$env$data$y_points
+  q=length(y_points)
+  g.values<-c(rep(g.1, q), rep(g.2, q), rep(g.3, q))
+  BMI=rep(y_points, 3)
+  type=as.factor(c(rep(type1, q), rep(type2, q), rep(type3, q)))
+  par1 <- adrep[rownames(adrep) == member1, ]
+  curve1<- par1[,1]
+  lower1 <- curve1 - qnorm(alpha)*par1[,2]
+  upper1 <- curve1 + qnorm(alpha)*par1[,2]
+  par2 <- adrep[rownames(adrep) == member2, ]
+  curve2<- par2[,1]
+  lower2 <- curve2 - qnorm(alpha)*par2[,2]
+  upper2 <- curve2 + qnorm(alpha)*par2[,2]
+  par3 <- adrep[rownames(adrep) == member3, ]
+  curve3<- par3[,1]
+  lower3 <- curve3 - qnorm(alpha)*par3[,2]
+  upper3 <- curve3 + qnorm(alpha)*par3[,2]
+  value<-c(curve1, curve2, curve3)
+  
+  lower<-c(lower1, lower2, lower3)
+  upper<-c(upper1, upper2, upper3)
+  dat <- c(MakeADFun.obj$env$data$y_mz, MakeADFun.obj$env$data$y_dz)
+  
+  
+  df<-data.frame(value=value, BMI=BMI, lower=lower, upper=upper, type=type, g.values=g.values)
+  p <- ggplot(data = df, aes(x = BMI, y = value)) +
+    geom_line() +
+    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3) +
+    geom_hline(aes(yintercept = g.values), linetype = 2, col = "red") +
+    geom_vline(xintercept = quantile(dat, probs = c(0.05, 0.95), na.rm =TRUE), col=3) +
+    facet_wrap(~type, nrow = 3, scales = "free_y")
+  p <- p +  theme_Publication()
+  p
+  
+  
+}
