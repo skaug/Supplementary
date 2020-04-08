@@ -1,2 +1,2 @@
 # Supplementary
-Supplementary material (code etc.) for papers
+Supplementary material (code etc.) for papers which I have co-authored.
